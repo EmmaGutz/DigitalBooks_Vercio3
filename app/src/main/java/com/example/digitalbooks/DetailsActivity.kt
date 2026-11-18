@@ -13,12 +13,6 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.bumptech.glide.Glide
 
-/**
- * Pantalla de detalle (equivalente a DatellActivity de la app de música).
- * Recibe por Intent los datos del libro que vienen del API y los muestra.
- * Todavía NO usa la base de datos: el botón "Guardar" solo marca el libro,
- * pero ya tiene todos los datos listos para guardarlos después en la BD.
- */
 class DetailsActivity : AppCompatActivity() {
 
     private lateinit var imgPortadaDetalle: ImageView
@@ -29,7 +23,12 @@ class DetailsActivity : AppCompatActivity() {
     private lateinit var btnVerLibro: Button
     private lateinit var btnVolver: TextView
 
+    // Instancia de nuestra base de datos
+    private lateinit var dbHelper: DatabaseHelper
     private var estaGuardado = false
+
+    // ID del usuario actual (se guarda en SharedPreferences al iniciar sesión)
+    private var idUsuarioActual = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,6 +41,10 @@ class DetailsActivity : AppCompatActivity() {
             insets
         }
 
+        // Inicializar el DatabaseHelper
+        dbHelper = DatabaseHelper(this)
+        idUsuarioActual = getSharedPreferences("sesion", MODE_PRIVATE).getInt("id_usuario", 0)
+
         imgPortadaDetalle = findViewById(R.id.imgPortadaDetalle)
         tvTituloDetalle = findViewById(R.id.tvTituloDetalle)
         tvAutorDetalle = findViewById(R.id.tvAutorDetalle)
@@ -52,32 +55,25 @@ class DetailsActivity : AppCompatActivity() {
 
         btnVolver.setOnClickListener { finish() }
 
-        // Estado del botón al abrir la pantalla (se conserva al girar el teléfono)
-        estaGuardado = savedInstanceState?.getBoolean("estaGuardado") ?: false
-        actualizarBotonGuardar()
-
         mostrarInformacionLibro()
     }
 
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-        outState.putBoolean("estaGuardado", estaGuardado)
-    }
-
-    // Lee el Intent con valores por defecto para que un dato nulo no cierre la app
     private fun mostrarInformacionLibro() {
         val titulo = intent.getStringExtra("TituloLibro") ?: "Sin título"
         val autores = intent.getStringExtra("AutoresLibro") ?: "Autor desconocido"
-        val enlace = intent.getStringExtra("EnlaceLibro")
-        val portada = intent.getStringExtra("PortadaLibro")
-        val anio = intent.getStringExtra("AnioLibro")
+        val enlace = intent.getStringExtra("EnlaceLibro") ?: ""
+        val portada = intent.getStringExtra("PortadaLibro") ?: ""
+        val anio = intent.getStringExtra("AnioLibro") ?: ""
         val paginas = intent.getIntExtra("PaginasLibro", 0)
         val fuente = intent.getStringExtra("FuenteLibro")
 
         tvTituloDetalle.text = titulo
         tvAutorDetalle.text = autores
 
-        // Solo mostramos los datos que el API sí devolvió
+        // Verificar en la base de datos si este libro ya es favorito de este usuario
+        estaGuardado = dbHelper.existeLibroFavorito(idUsuarioActual, titulo)
+        actualizarBotonGuardar()
+
         val detalles = ArrayList<String>()
         if (!anio.isNullOrBlank()) detalles.add("Año de publicación: $anio")
         if (paginas > 0) detalles.add("Páginas: $paginas")
@@ -85,27 +81,46 @@ class DetailsActivity : AppCompatActivity() {
         tvInfoDetalle.text = if (detalles.isEmpty()) "Sin más detalles disponibles"
         else detalles.joinToString("\n")
 
-        // Portada en tamaño grande (Open Library: -M -> -L). Si no hay, queda el fondo oscuro.
-        if (!portada.isNullOrBlank()) {
+        if (portada.isNotBlank()) {
             Glide.with(this)
                 .load(portada.replace("-M.jpg", "-L.jpg"))
                 .into(imgPortadaDetalle)
         }
 
         btnGuardar.setOnClickListener {
-            estaGuardado = !estaGuardado
-            actualizarBotonGuardar()
-            if (estaGuardado) {
-                // TODO (siguiente etapa): aquí se insertará en la base de datos
-                // titulo, autores, portada, enlace, anio, paginas y fuente.
-                Toast.makeText(this, "\"$titulo\" guardado", Toast.LENGTH_SHORT).show()
+            if (!estaGuardado) {
+                // Intentar guardar en la base de datos
+                val guardadoExitoso = dbHelper.guardarLibroFavorito(
+                    idUsuario = idUsuarioActual,
+                    titulo = titulo,
+                    autor = autores,
+                    portada = portada,
+                    enlace = enlace
+                )
+
+                if (guardadoExitoso) {
+                    estaGuardado = true
+                    actualizarBotonGuardar()
+                    Toast.makeText(this, "\"$titulo\" guardado en favoritos", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this, "Error al guardar el libro", Toast.LENGTH_SHORT).show()
+                }
             } else {
-                Toast.makeText(this, "\"$titulo\" quitado de guardados", Toast.LENGTH_SHORT).show()
+                // Eliminar de la base de datos si ya estaba guardado
+                val eliminadoExitoso = dbHelper.eliminarLibroFavorito(idUsuarioActual, titulo)
+
+                if (eliminadoExitoso) {
+                    estaGuardado = false
+                    actualizarBotonGuardar()
+                    Toast.makeText(this, "\"$titulo\" quitado de favoritos", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this, "Error al quitar de favoritos", Toast.LENGTH_SHORT).show()
+                }
             }
         }
 
         btnVerLibro.setOnClickListener {
-            if (enlace.isNullOrBlank()) {
+            if (enlace.isBlank()) {
                 Toast.makeText(this, "Enlace no disponible", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }

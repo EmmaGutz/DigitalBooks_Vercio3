@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "160971783371",
+    "project_id": "digitalbooks0-6ebb2",
+    "storage_bucket": "digitalbooks0-6ebb2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:160971783371:android:0939d5571d25a3897aef4e",
+        "android_client_info": {
+          "package_name": "com.example.digitalbooks"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "160971783371-e84qppib152n0u4bt74c6ro3eu59u5kn.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.digitalbooks",
+            "certificate_hash": "a85f1a430e2a82c5044f3d75bf54084ea39372a0"
+          }
+        },
+        {
+          "client_id": "160971783371-lef3s7hjrjo6jo2mupoigiiijfha7odn.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCmFVJN6zjLlHqY3ZygAtqOlhFEo4OqDvs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "160971783371-lef3s7hjrjo6jo2mupoigiiijfha7odn.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
